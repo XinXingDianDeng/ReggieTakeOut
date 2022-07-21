@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+
+<mapper namespace="com.yzx.reggie.mapper.DishMapper">
+    <resultMap id="DishDtoResultMapper" type="com.yzx.reggie.dto.DishDto" autoMapping="true">
+        <id property="id" column="d_id"/>
+        <result property="name" column="name"/>
+        <collection property="flavors" column="d_id"
+                    javaType="java.util.ArrayList" select="com.yzx.reggie.mapper.DishMapper.selectFlavorsById"/>
+    </resultMap>
+    <resultMap id="DishFlavorResultMapper" type="com.yzx.reggie.entity.DishFlavor">
+        <id property="id" column="df_id"/>
+        <result property="name" column="df_name"/>
+        <result property="dishId" column="d_id"/>
+        <result property="value" column="value"/>
+    </resultMap>
+
+    <select id="selectDishDtoByPage" resultType="com.yzx.reggie.dto.DishDto">
+        select dish.id, dish.name, dish.category_id, dish.price, dish.code, dish.image, dish.description, dish.status,
+        dish.sort, dish.create_time, dish.update_time, dish.create_user, dish.update_user, category.name categoryName
+        from dish
+        left join category on dish.category_id = category.id
+        <where>
+            dish.id >= (
+            select id from dish order by id limit #{offset},1
+            )
+            and dish.is_deleted = 0
+            and category.is_deleted = 0
+            <if test="name!=null and name!=''">
+                and dish.name like concat('%',#{name},'%')
+            </if>
+        </where>
+        limit #{pageSize};
+    </select>
+    <select id="selectByIdWithFlavor" resultMap="DishDtoResultMapper">
+        select id d_id,
+               name,
+               category_id,
+               price,
+               code,
+               image,
+               description,
+               status,
+               sort,
+               create_time,
+               update_time,
+               create_user,
+               update_user
+        from dish
+        where id = #{id}
+          and is_deleted = 0;
+    </select>
+    <select id="selectFlavorsById" resultMap="DishFlavorResultMapper">
+        select id df_id, dish_id, name df_name, value
+        from dish_flavor
+        where dish_id = #{df_id}
+          and is_deleted = 0;
+    </select>
+</mapper>
+
+        <!--<select id="selectByIdWithFlavor" resultMap="DishDtoResultMapper">-->
+        <!--select dish.id          d_id,-->
+        <!--       dish.name,-->
+        <!--       dish.category_id,-->
+        <!--       dish.price,-->
+        <!--       dish.code,-->
+        <!--       dish.image,-->
+        <!--       dish.description,-->
+        <!--       dish.status,-->
+        <!--       dish.sort,-->
+        <!--       dish.create_time,-->
+        <!--       dish.update_time,-->
+        <!--       dish.create_user,-->
+        <!--       dish.update_user,-->
+        <!--       dish_flavor.id   df_id,-->
+        <!--       dish_flavor.dish_id,-->
+        <!--       dish_flavor.name df_name,-->
+        <!--       dish_flavor.value-->
+        <!--from dish-->
+        <!--         left join dish_flavor on dish.id = dish_flavor.dish_id-->
+        <!--where dish.id = #{id}-->
+        <!--  and dish.is_deleted = 0-->
+        <!--  and dish_flavor.is_deleted = 0;-->
+        <!--</select>-->
