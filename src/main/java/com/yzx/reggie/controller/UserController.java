@@ -11,10 +11,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpSession;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
 @Slf4j
@@ -28,8 +30,11 @@ public class UserController {
     @Value("${MyMail.templateCode}")
     private String templateCode;
 
+    @Autowired
+    private StringRedisTemplate redisTemplate;
+
     @PostMapping("/sendMsg")
-    public R<String> sendMsg(@RequestBody User user, HttpSession httpSession) {
+    public R<String> sendMsg(@RequestBody User user) {
         String phone = user.getPhone();
         String mail = user.getMail();
         //随机生成4/6位验证码
@@ -40,7 +45,8 @@ public class UserController {
             return R.success("短信发送成功");
         } else if (StringUtils.isNotBlank(mail)) {
 //            SMSUtils.sendMessage(templateCode, mail, code);
-            httpSession.setAttribute(mail, code);
+            //将验证码缓存到redis，并设置五分钟存活时间
+            redisTemplate.opsForValue().set(mail, code, 5, TimeUnit.MINUTES);
             return R.success("短信发送成功");
         } else {
             throw new CustomException("手机号或邮箱有误,发送失败");
@@ -51,8 +57,8 @@ public class UserController {
     public R<User> login(@RequestBody Map map, HttpSession httpSession) {
         String account = (String) map.get("account");
         String code = (String) map.get("code");
-        Object codeInSession = httpSession.getAttribute(account);
-        if (codeInSession != null && codeInSession.equals(code)) {
+        Object codeInRedis = redisTemplate.opsForValue().get(account);
+        if (codeInRedis != null && codeInRedis.equals(code)) {
             LambdaQueryWrapper<User> lwq = new LambdaQueryWrapper<>();
             lwq.eq(User::getPhone, account)
                     .or().eq(User::getMail, account);
@@ -68,6 +74,7 @@ public class UserController {
                 user.setStatus(1);
                 userService.save(user);
             }
+            redisTemplate.delete(account);
             httpSession.setAttribute("user", user.getId());
             return R.success(user);
         }

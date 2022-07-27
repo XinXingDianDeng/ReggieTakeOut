@@ -13,6 +13,7 @@ import com.yzx.reggie.service.IDishFlavorService;
 import com.yzx.reggie.service.IDishService;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,6 +27,9 @@ public class DishServiceImpl extends ServiceImpl<DishMapper, Dish> implements ID
     private IDishFlavorService dishFlavorService;
 
     private DishMapper dishMapper;
+
+    @Autowired
+    private RedisTemplate redisTemplate;
 
     @Autowired
     public DishServiceImpl(IDishFlavorService dishFlavorService, DishMapper dishMapper) {
@@ -47,6 +51,8 @@ public class DishServiceImpl extends ServiceImpl<DishMapper, Dish> implements ID
             }).collect(Collectors.toList());
             dishFlavorService.saveBatch(flavors);
         }
+        String key = "dish_" + dishDto.getCategoryId() + "_1";
+        redisTemplate.delete(key);
     }
 
     @Override
@@ -85,20 +91,23 @@ public class DishServiceImpl extends ServiceImpl<DishMapper, Dish> implements ID
             }).collect(Collectors.toList());
             dishFlavorService.saveBatch(flavors);
         }
+
+        String key = "dish_" + dishDto.getCategoryId() + "_1";
+        redisTemplate.delete(key);
     }
 
     @Override
     public void removeWithFlavor(List<Long> ids) {
         LambdaQueryWrapper<Dish> dishQueryWrapper = new LambdaQueryWrapper<>();
         dishQueryWrapper.in(Dish::getId, ids)
-                .eq(Dish::getStatus, 0);
+                .eq(Dish::getStatus, 1);
         int count = this.count(dishQueryWrapper);
-        if(count>0){
+        if (count > 0) {
             throw new CustomException("有菜品正在售卖，删除失败");
         }
         this.removeByIds(ids);
         LambdaQueryWrapper<DishFlavor> dishFlavorQueryWrapper = new LambdaQueryWrapper<>();
-        dishFlavorQueryWrapper.in(DishFlavor::getDishId,ids);
+        dishFlavorQueryWrapper.in(DishFlavor::getDishId, ids);
         dishFlavorService.remove(dishFlavorQueryWrapper);
         //TODO: 删除菜品图片
     }
