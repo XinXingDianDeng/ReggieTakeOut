@@ -2,11 +2,12 @@ package com.yzx.reggie.common;
 
 import lombok.Data;
 
+import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
 
 @Data
-public class R<T> {
+public class R<T> implements Serializable {
     //1:成功 0/其他:失败
     private Integer code;
     //错误信息

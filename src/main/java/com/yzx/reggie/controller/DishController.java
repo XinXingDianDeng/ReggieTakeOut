@@ -79,6 +79,7 @@ public class DishController {
         uw.in("id", ids)
                 .set("status", status);
         dishService.update(new Dish(), uw);
+//        LambdaQueryWrapper<>
         return R.success(status == 0 ? "停售成功" : "起售成功");
     }
 
