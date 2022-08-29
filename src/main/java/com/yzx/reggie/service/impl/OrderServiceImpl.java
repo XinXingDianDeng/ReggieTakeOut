@@ -8,6 +8,7 @@ import com.yzx.reggie.entity.*;
 import com.yzx.reggie.mapper.OrderMapper;
 import com.yzx.reggie.service.*;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,10 +37,13 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Orders> implement
     @Autowired
     private IOrderDetailService orderDetailService;
 
+    @Autowired
+    private StringRedisTemplate redisTemplate;
+
     @Override
     @Transactional
     public void submit(Orders orders) {
-        Long userId = (Long) session.getAttribute("user");
+        Long userId = Long.valueOf(redisTemplate.opsForValue().get("userId"));
         LambdaQueryWrapper<ShoppingCart> shoppingCartLambdaQueryWrapper = new LambdaQueryWrapper<>();
         shoppingCartLambdaQueryWrapper.eq(ShoppingCart::getUserId, userId);
         List<ShoppingCart> shoppingCarts = shoppingCartService.list(shoppingCartLambdaQueryWrapper);
@@ -56,7 +60,7 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Orders> implement
         long orderId = IdWorker.getId();
 
         AtomicInteger amount = new AtomicInteger(0);
-        List<OrderDetail> orderDetails = shoppingCarts.stream().map((item)->{
+        List<OrderDetail> orderDetails = shoppingCarts.stream().map((item) -> {
             OrderDetail orderDetail = new OrderDetail();
             orderDetail.setOrderId(orderId);
             orderDetail.setNumber(item.getNumber());

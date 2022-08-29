@@ -24,13 +24,16 @@ public class MvcConfig implements WebMvcConfigurer {
         registry.addInterceptor(loginInterceptor)
                 .addPathPatterns("/**")
                 .excludePathPatterns("/backend/**","/front/**","/employee/login","/employee/logout"
-                ,"/user/sendMsg","/user/login");
+                ,"/user/sendMsg","/user/login","/common/**");
     }
 
     @Override
     public void extendMessageConverters(List<HttpMessageConverter<?>> converters) {
+        //创建消息转换器对象
         MappingJackson2HttpMessageConverter converter = new MappingJackson2HttpMessageConverter();
+        //设置对象转换器，底层使用Jackson将java转换为JSON
         converter.setObjectMapper(new JacksonObjectMapper());
+        //将消息转换器添加进mvc框架的转换器集合中
         converters.add(0,converter);
     }
 }

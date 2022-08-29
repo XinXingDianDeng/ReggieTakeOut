@@ -5,13 +5,16 @@ import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.yzx.reggie.common.R;
 import com.yzx.reggie.entity.AddressBook;
 import com.yzx.reggie.service.IAddressBookService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpSession;
 import java.util.List;
 
+@Slf4j
 @RestController
 @RequestMapping("/addressBook")
 public class AddressBookController {
@@ -19,11 +22,15 @@ public class AddressBookController {
     @Autowired
     private IAddressBookService addressBookService;
 
+    @Autowired
+    private StringRedisTemplate redisTemplate;
+
     @GetMapping("/list")
     public R<List<AddressBook>> list(HttpSession httpSession) {
-        Object userID = httpSession.getAttribute("user");
+//        Object userID = httpSession.getAttribute("user");
+        String userId = redisTemplate.opsForValue().get("userId");
         LambdaQueryWrapper<AddressBook> lwq = new LambdaQueryWrapper<>();
-        lwq.eq(AddressBook::getUserId, userID).orderByDesc(AddressBook::getIsDefault);
+        lwq.eq(AddressBook::getUserId, userId).orderByDesc(AddressBook::getIsDefault);
         List<AddressBook> addressBooks = addressBookService.list(lwq);
         return R.success(addressBooks);
     }
@@ -31,9 +38,12 @@ public class AddressBookController {
     @PutMapping("/default")
     @Transactional
     public R<String> setDefault(@RequestBody AddressBook addressBook) {
+        Long userId = Long.valueOf(redisTemplate.opsForValue().get("userId"));
         //更改原先默认地址为0
         UpdateWrapper<AddressBook> updateWrapper1 = new UpdateWrapper<>();
-        updateWrapper1.eq("is_default", 1).set("is_default", 0);
+        updateWrapper1.eq("user_id", userId)
+                .eq("is_default", 1)
+                .set("is_default", 0);
         addressBookService.update(new AddressBook(), updateWrapper1);
         addressBook.setIsDefault(1);
         addressBookService.updateById(addressBook);
@@ -53,8 +63,8 @@ public class AddressBookController {
 
     @PostMapping
     public R<String> save(@RequestBody AddressBook addressBook, HttpSession httpSession) {
-        Long user = (Long) httpSession.getAttribute("user");
-        addressBook.setUserId(user);
+        Long userId = Long.valueOf(redisTemplate.opsForValue().get("userId"));
+        addressBook.setUserId(userId);
         addressBookService.save(addressBook);
         return R.success("地址增加成功");
     }

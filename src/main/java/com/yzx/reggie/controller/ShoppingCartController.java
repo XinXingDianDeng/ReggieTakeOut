@@ -6,6 +6,8 @@ import com.yzx.reggie.common.R;
 import com.yzx.reggie.entity.ShoppingCart;
 import com.yzx.reggie.service.IShoppingCartService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpSession;
@@ -20,9 +22,13 @@ public class ShoppingCartController {
     @Autowired
     private IShoppingCartService shoppingCartService;
 
+    @Autowired
+    private StringRedisTemplate redisTemplate;
+
     @PostMapping("/add")
     public R<ShoppingCart> add(@RequestBody ShoppingCart shoppingCart, HttpSession session) {
-        Long userId = (Long) session.getAttribute("user");
+//        Long userId = (Long) session.getAttribute("user");
+        Long userId = Long.valueOf(redisTemplate.opsForValue().get("userId"));
         shoppingCart.setUserId(userId);
         LambdaQueryWrapper<ShoppingCart> lwq = new LambdaQueryWrapper<>();
         lwq.eq(ShoppingCart::getUserId, userId)
@@ -44,7 +50,8 @@ public class ShoppingCartController {
 
     @GetMapping("/list")
     public R<List<ShoppingCart>> list(HttpSession session) {
-        Long userId = (Long) session.getAttribute("user");
+//        Long userId = (Long) session.getAttribute("user");
+        Long userId = Long.valueOf(redisTemplate.opsForValue().get("userId"));
         LambdaQueryWrapper<ShoppingCart> lwq = new LambdaQueryWrapper<>();
         lwq.eq(ShoppingCart::getUserId, userId).orderByAsc(ShoppingCart::getCreateTime);
         List<ShoppingCart> carts = shoppingCartService.list(lwq);
@@ -53,7 +60,8 @@ public class ShoppingCartController {
 
     @DeleteMapping("/clean")
     public R<String> clean(HttpSession session) {
-        Long userId = (Long) session.getAttribute("user");
+//        Long userId = (Long) session.getAttribute("user");
+        Long userId = Long.valueOf(redisTemplate.opsForValue().get("userId"));
         LambdaQueryWrapper<ShoppingCart> lwq = new LambdaQueryWrapper<>();
         lwq.eq(ShoppingCart::getUserId, userId);
         shoppingCartService.remove(lwq);
@@ -62,7 +70,8 @@ public class ShoppingCartController {
 
     @PostMapping("/sub")
     public R<String> sub(@RequestBody Map map, HttpSession session) {
-        Long userId = (Long) session.getAttribute("user");
+//        Long userId = (Long) session.getAttribute("user");
+        Long userId = Long.valueOf(redisTemplate.opsForValue().get("userId"));
         Object dishId = map.get("dishId");
         Object setmealId = map.get("setmealId");
 //        ShoppingCart shoppingCart = new ShoppingCart();

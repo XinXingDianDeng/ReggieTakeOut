@@ -2,10 +2,10 @@ package com.yzx.reggie.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.yzx.reggie.common.CustomException;
+import com.yzx.reggie.utils.JWTUtil;
 import com.yzx.reggie.common.R;
 import com.yzx.reggie.entity.User;
 import com.yzx.reggie.service.IUserService;
-import com.yzx.reggie.utils.SMSUtils;
 import com.yzx.reggie.utils.ValidateCodeUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -15,9 +15,9 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpSession;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
-import java.util.regex.Pattern;
 
 @Slf4j
 @RestController
@@ -54,9 +54,10 @@ public class UserController {
     }
 
     @PostMapping("/login")
-    public R<User> login(@RequestBody Map map, HttpSession httpSession) {
+    public R<String> login(@RequestBody Map map, HttpSession httpSession) {
         String account = (String) map.get("account");
         String code = (String) map.get("code");
+        //从缓存中获取验证码
         Object codeInRedis = redisTemplate.opsForValue().get(account);
         if (codeInRedis != null && codeInRedis.equals(code)) {
             LambdaQueryWrapper<User> lwq = new LambdaQueryWrapper<>();
@@ -75,15 +76,19 @@ public class UserController {
                 userService.save(user);
             }
             redisTemplate.delete(account);
-            httpSession.setAttribute("user", user.getId());
-            return R.success(user);
+//            httpSession.setAttribute("user", user.getId());
+            redisTemplate.opsForValue().set("userId", user.getId().toString(), 7, TimeUnit.DAYS);
+            Map<String, String> claims = new HashMap<>();
+            claims.put("userId", user.getId().toString());
+            String token = JWTUtil.getToken(claims);
+            return R.success(token);
         }
         return R.error("登录失败");
     }
 
     @PostMapping("/loginout")
     public R<String> logout(HttpSession httpSession) {
-        httpSession.removeAttribute("user");
+        redisTemplate.delete("userId");
         return R.success("退出登录成功");
     }
 }
